@@ -1,0 +1,34 @@
+port: 8080
+accessType: api
+replicaCount: 2
+
+config:
+  remedyStepForm: "ApiBase:Step"
+  remedyKVForm: "ApiBase:Join:KeyValue"
+  remedyProcessForm: "ApiBase:Process"
+  remedyPStepForm: "ApiBase:ProcessStep"
+
+test:
+  config:
+    remedyUrl: "https://remedytest.com"
+    remedyUsername: "apibaseuser"
+
+prod:
+  config:
+    remedyUrl: "https://remedyprod.com"
+    remedyUsername: "apibaseuser"
+
+podAnnotations:
+  vault.hashicorp.com/agent-init-first: 'true'
+  vault.hashicorp.com/agent-inject: 'true'
+  vault.hashicorp.com/agent-pre-populate-only: 'true'
+  vault.hashicorp.com/agent-run-as-user: "1001"
+  vault.hashicorp.com/agent-run-as-group: "1002"
+  vault.hashicorp.com/role: "remedy-apibase"
+  vault.hashicorp.com/agent-inject-secret-custom.properties: "secret/data/remedy-apibase"
+  vault.hashicorp.com/agent-inject-template-custom.properties: |
+    {{- with secret "secret/data/remedy-apibase" -}}
+      {{- range $k, $v := .Data.data }}
+        {{ $k }}={{ $v }}
+      {{- end }}
+    {{- end }}

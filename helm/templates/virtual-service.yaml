@@ -1,0 +1,27 @@
+{{- if ne (include "mychart.accessType" .) "internal" }}
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: {{ include "mychart.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  gateways:
+  {{- range (split "," (include "mychart.accessType" . )) }}
+    {{- if ne (. | trim) "internal" }}
+    - istio-system/{{ . | trim }}-gateway
+    {{- end }}
+  {{- end }}
+  hosts:
+    - "*"
+  http:
+    - match:
+        - uri:
+            prefix: /{{ include "mychart.name" . }}/
+      rewrite:
+        uri: "/"
+      route:
+        - destination:
+            host: {{ include "mychart.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+            port:
+              number: {{ include "mychart.port" . }}
+{{- end }}

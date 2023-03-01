@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mychart.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mychart.labels" . | nindent 4 }}
+spec:
+  replicas: {{ include "mychart.replicaCount" . }}
+  selector:
+    matchLabels:
+      {{- include "mychart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- if or (.Values.podAnnotations) (get (get .Values (.Values.env | default "noenv") | default dict ) "podAnnotations") }}
+      annotations:
+        {{- include "mychart.podAnnotations" . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "mychart.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "mychart.fullname" . }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: {{ include "mychart.image" .}}
+          imagePullPolicy: "IfNotPresent"
+          ports:
+            - name: http
+              containerPort: {{ include "mychart.port" . }}
+              protocol: TCP
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep 10"]
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            initialDelaySeconds: {{ .Values.initialDelaySeconds | default 20 }}
+            failureThreshold: {{ .Values.failureThreshold | default 5 }}
+            timeoutSeconds: {{ .Values.timeoutSeconds | default 10 }}
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            initialDelaySeconds: {{ .Values.initialDelaySeconds | default 20 }}
+            failureThreshold: {{ .Values.failureThreshold | default 5 }}
+            timeoutSeconds: {{ .Values.timeoutSeconds | default 10 }}
+          envFrom:
+            - configMapRef:
+                name: enterprise-common
+            - configMapRef:
+                name: {{ include "mychart.fullname" . }}
+          resources:
+            {{- include "mychart.resources" . | nindent 12 }}
+      {{- if or (.Values.nodeSelector) (get (get .Values (.Values.env | default "noenv") | default dict ) "nodeSelector") }}
+      nodeSelector:
+        {{- include "mychart.nodeSelector" . | nindent 8 }}
+      {{- end }}
